@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>СЕКРЕТНАЯ КОМНАТА</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{ --wood:#5a3b21; --wood2:#7a5230; --gold:#f4c63d; --wall:#120d1c; }
+  html,body{height:100%;}
+  body{
+    font-family:"Trebuchet MS",Verdana,sans-serif; background:#05030a; color:#fff;
+    overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; user-select:none;
+  }
+  .title{ letter-spacing:6px; font-weight:900; font-size:clamp(18px,3vw,30px); text-transform:uppercase;
+    margin-bottom:10px; text-shadow:0 0 14px rgba(244,198,61,.6),0 0 30px rgba(120,60,200,.4); color:#ffe9a8; }
+  .hint{ font-size:13px; opacity:.85; margin-bottom:14px; min-height:18px; transition:.3s; text-align:center; max-width:90vw; }
+
+  #room{ position:relative; width:min(92vw,760px); height:min(70vh,520px); border-radius:18px; overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 10%,#241a38 0%,var(--wall) 55%,#070410 100%);
+    box-shadow:inset 0 0 120px rgba(0,0,0,.9),0 20px 60px rgba(0,0,0,.7); border:2px solid #2a2140; }
+  #room::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:22%;
+    background:linear-gradient(#1a1226,#0a0612); border-top:1px solid rgba(255,255,255,.05); }
+  #light{ position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity 1.2s;
+    background:radial-gradient(60% 80% at 50% 45%,rgba(255,240,180,.55),rgba(255,240,180,0) 70%); }
+  #room.opened #light{opacity:1;}
+
+  #doorWrap{ position:absolute; left:50%; top:14%; transform:translateX(-50%); width:150px; height:300px; perspective:1200px; z-index:5; }
+  #door{ position:absolute; inset:0; cursor:pointer; transform-origin:left center;
+    transition:transform 1.4s cubic-bezier(.4,.1,.2,1), opacity .8s;
+    background:linear-gradient(90deg,var(--wood) 0%,var(--wood2) 50%,var(--wood) 100%);
+    border:4px solid #3a2412; border-radius:6px 6px 2px 2px;
+    box-shadow:inset -14px 0 24px rgba(0,0,0,.5),inset 14px 0 18px rgba(255,255,255,.06); }
+  #room.opened #door{ transform:rotateY(-118deg); opacity:0; }
+  #door .plank{position:absolute;top:6px;bottom:6px;width:2px;background:rgba(0,0,0,.35);}
+  #door .frame{position:absolute;left:8px;right:8px;height:60px;border:3px solid rgba(0,0,0,.3);border-radius:4px;}
+  #door .frame.f1{top:18px;} #door .frame.f2{top:95px;} #door .frame.f3{top:172px;}
+  #lock{ position:absolute; right:14px; top:140px; width:22px; height:26px;
+    background:radial-gradient(circle at 40% 30%,#ffe98a,var(--gold) 60%,#a97e12);
+    border-radius:5px; box-shadow:0 0 8px rgba(244,198,61,.7); }
+  #lock::before{content:"";position:absolute;left:50%;top:4px;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#5a3b00;}
+  #lock::after{content:"";position:absolute;left:50%;top:8px;transform:translateX(-50%);width:4px;height:11px;background:#5a3b00;border-radius:0 0 2px 2px;}
+
+  @keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-7px)}30%{transform:translateX(7px)}
+    45%{transform:translateX(-6px)}60%{transform:translateX(6px)}75%{transform:translateX(-3px)}90%{transform:translateX(3px)}}
+  #door.shake{animation:shake .5s;}
+
+  #doorway{ position:absolute; left:50%; top:14%; transform:translateX(-50%); width:150px; height:300px; z-index:1;
+    background:linear-gradient(#000,#0a0714); border-radius:6px; }
+  #room.opened #doorway{background:linear-gradient(120deg,#fff6cf,#ffd97a 60%,#ffae3b);}
+
+  /* ===== РАДУГА ===== */
+  #rainbow{ position:absolute; left:50%; top:14%; transform:translateX(-50%); width:200px; height:300px; z-index:2;
+    opacity:0; transition:opacity 1.5s; pointer-events:none; }
+  #room.opened #rainbow{opacity:1;}
+  #rainbow svg{width:100%;height:100%;}
+
+  /* ===== КЛЮЧ ===== */
+  #key{ position:absolute; z-index:8; width:60px; height:26px; cursor:pointer;
+    filter:drop-shadow(0 0 6px rgba(244,198,61,.8));
+    transition:top 1s ease-in-out,left 1s ease-in-out,transform 1s ease-in-out,opacity .4s .8s; }
+  #key svg{width:100%;height:100%;display:block;}
+  #key.gone{opacity:0 !important; pointer-events:none;}
+  @keyframes floaty{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-6px) rotate(-8deg)}}
+  #key.idle{animation:floaty 2.4s ease-in-out infinite;}
+
+  /* ===== ПЕРСОНАЖ 1 (девочка, слева) ===== */
+  #char1{ position:absolute; left:10%; bottom:18%; width:140px; z-index:6; cursor:pointer;
+    transition:transform 1.2s cubic-bezier(.4,.1,.2,1), left 1.2s cubic-bezier(.4,.1,.2,1); }
+  #char1 svg{width:100%;height:auto;display:block;filter:drop-shadow(0 6px 10px rgba(0,0,0,.6));}
+  #char1.turn{transform:scaleX(-1);}
+  #char1 .mouth-sad,#char1 .mouth-angry,#char1 .mouth-happy{display:none;}
+  #char1.sad .mouth-sad{display:block;} #char1.angry .mouth-angry{display:block;} #char1.happy .mouth-happy{display:block;}
+  #char1 .tear{transition:opacity .4s;} #char1:not(.sad) .tear{opacity:0;}
+  #char1 .brow-angry{display:none;} #char1.angry .brow-angry{display:block;} #char1.angry .brow-calm{display:none;}
+  #char1 .blush{opacity:0;transition:.4s;} #char1.happy .blush{opacity:.85;}
+  @keyframes bounce1{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  #char1.happy{animation:bounce1 .6s ease-in-out 3;}
+
+  /* ===== ПЕРСОНАЖ 2 (мальчик, справа, изначально скрыт) ===== */
+  #char2{ position:absolute; right:10%; bottom:18%; width:140px; z-index:6; cursor:pointer;
+    opacity:0; pointer-events:none; transition:opacity .8s; }
+  #char2 svg{width:100%;height:auto;display:block;filter:drop-shadow(0 6px 10px rgba(0,0,0,.6));}
+  #char2.visible{opacity:1; pointer-events:auto;}
+  #char2 .mouth-sad,#char2 .mouth-happy,#char2 .mouth-kissed{display:none;}
+  #char2.neutral .mouth-sad{display:block;} #char2.happy .mouth-happy{display:block;} #char2.kissed .mouth-kissed{display:block;}
+  #char2 .brow-angry{display:none;}
+  #char2 .blush{opacity:0;transition:.4s;} #char2.happy .blush,#char2.kissed .blush{opacity:.85;}
+
+  /* ===== БУКЕТ ЦВЕТОВ ===== */
+  #flowers{ position:absolute; z-index:7; width:50px; height:60px; opacity:0; pointer-events:none;
+    transition:opacity .6s, transform .6s; }
+  #flowers svg{width:100%;height:100%;}
+  #flowers.visible{opacity:1;}
+
+  /* ===== СЕРДЕЧКИ / ПОЦЕЛУИ ===== */
+  .heart{ position:absolute; z-index:9; font-size:26px; pointer-events:none; animation:rise 1.6s ease-out forwards; }
+  @keyframes rise{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-120px) scale(1.3)}}
+
+  /* ===== СООБЩЕНИЯ ===== */
+  #msg{ position:absolute; top:12px; left:50%; transform:translateX(-50%) translateY(-20px);
+    background:#c0182b; color:#fff; padding:10px 20px; border-radius:8px; font-weight:800; letter-spacing:1px;
+    box-shadow:0 6px 18px rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:.3s; z-index:20;
+    white-space:nowrap; max-width:90%; overflow:hidden; text-overflow:ellipsis; }
+  #msg.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  #win{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:.6s; z-index:30; text-align:center; }
+  #win.show{opacity:1;}
+  #win h2{font-size:clamp(22px,5vw,46px);color:#ffe9a8;text-shadow:0 0 20px rgba(244,198,61,.8);letter-spacing:4px;}
+  #win p{margin-top:8px;opacity:.85;}
+</style>
+</head>
+<body>
+  <div class="title">🔑 Секретная комната 🔑</div>
+  <div class="hint" id="hint">Найди ключ в руках девочки и открой дверь…</div>
+
+  <div id="room">
+    <div id="light"></div>
+    <div id="doorway"></div>
+    
+    <!-- РАДУГА -->
+    <div id="rainbow">
+      <svg viewBox="0 0 200 300">
+        <defs>
+          <linearGradient id="rainbowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#ff0000;stop-opacity:1" />
+            <stop offset="16%" style="stop-color:#ff7f00;stop-opacity:1" />
+            <stop offset="33%" style="stop-color:#ffff00;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#00ff00;stop-opacity:1" />
+            <stop offset="66%" style="stop-color:#0000ff;stop-opacity:1" />
+            <stop offset="83%" style="stop-color:#4b0082;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#9400d3;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <path d="M 20 300 Q 100 50 180 300" fill="none" stroke="url(#rainbowGrad)" stroke-width="40" opacity="0.7"/>
+        <path d="M 30 300 Q 100 80 170 300" fill="none" stroke="url(#rainbowGrad)" stroke-width="30" opacity="0.5"/>
+        <path d="M 40 300 Q 100 110 160 300" fill="none" stroke="url(#rainbowGrad)" stroke-width="20" opacity="0.3"/>
+      </svg>
+    </div>
+
+    <!-- ДВЕРЬ -->
+    <div id="doorWrap">
+      <div id="door">
+        <span class="plank" style="left:33%"></span><span class="plank" style="left:66%"></span>
+        <span class="frame f1"></span><span class="frame f2"></span><span class="frame f3"></span>
+        <div id="lock"></div>
+      </div>
+    </div>
+
+    <!-- ПЕРСОНАЖ 1: девочка (тёмные волосы, фиолетовое платье) -->
+    <div id="char1" class="sad">
+      <svg viewBox="0 0 120 170">
+        <path d="M30 168 Q30 110 60 108 Q90 110 90 168 Z" fill="#3a2f5c"/>
+        <rect x="52" y="96" width="16" height="18" fill="#f7d6b8"/>
+        <path d="M18 60 Q14 120 30 132 L34 70 Z" fill="#241a3a"/>
+        <path d="M102 60 Q106 120 90 132 L86 70 Z" fill="#241a3a"/>
+        <circle cx="60" cy="58" r="34" fill="#fbe0c4"/>
+        <path d="M26 52 Q30 20 60 22 Q90 20 94 52 Q80 40 60 42 Q40 40 26 52Z" fill="#2b1f47"/>
+        <circle cx="27" cy="60" r="5" fill="#fbe0c4"/><circle cx="93" cy="60" r="5" fill="#fbe0c4"/>
+        <ellipse class="blush" cx="40" cy="66" rx="7" ry="4" fill="#ff9db0"/>
+        <ellipse class="blush" cx="80" cy="66" rx="7" ry="4" fill="#ff9db0"/>
+        <g class="brow-calm"><path d="M40 48 Q48 44 56 48" stroke="#2b1f47" stroke-width="3" fill="none" stroke-linecap="round"/>
+           <path d="M64 48 Q72 44 80 48" stroke="#2b1f47" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+        <g class="brow-angry"><path d="M40 44 L58 52" stroke="#2b1f47" stroke-width="3.5" stroke-linecap="round"/>
+           <path d="M80 44 L62 52" stroke="#2b1f47" stroke-width="3.5" stroke-linecap="round"/></g>
+        <ellipse cx="48" cy="60" rx="6" ry="9" fill="#2b1f47"/><ellipse cx="72" cy="60" rx="6" ry="9" fill="#2b1f47"/>
+        <circle cx="50" cy="56" r="2" fill="#fff"/><circle cx="74" cy="56" r="2" fill="#fff"/>
+        <path class="tear" d="M44 70 q-3 6 0 8 q3 -2 0 -8Z" fill="#7fd0ff"/>
+        <path class="mouth-sad" d="M52 80 Q60 74 68 80" stroke="#a33" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path class="mouth-angry" d="M52 82 Q60 76 68 82" stroke="#a33" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path class="mouth-happy" d="M50 76 Q60 88 70 76" stroke="#a33" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- ПЕРСОНАЖ 2: мальчик (коричневые волосы, зелёная куртка) -->
+    <div id="char2" class="neutral">
+      <svg viewBox="0 0 120 170">
+        <path d="M30 168 Q30 110 60 108 Q90 110 90 168 Z" fill="#2d5a3d"/>
+        <rect x="52" y="96" width="16" height="18" fill="#f7d6b8"/>
+        <path d="M20 60 Q18 90 28 95 L34 65 Z" fill="#6b4423"/>
+        <path d="M100 60 Q102 90 92 95 L86 65 Z" fill="#6b4423"/>
+        <circle cx="60" cy="58" r="34" fill="#fbe0c4"/>
+        <path d="M26 52 Q30 24 60 24 Q90 24 94 52 Q80 36 60 38 Q40 36 26 52Z" fill="#6b4423"/>
+        <path d="M30 48 L38 40 L46 48 L54 38 L62 48 L70 38 L78 48 L86 40 L90 50 Z" fill="#6b4423"/>
+        <circle cx="27" cy="60" r="5" fill="#fbe0c4"/><circle cx="93" cy="60" r="5" fill="#fbe0c4"/>
+        <ellipse class="blush" cx="40" cy="66" rx="7" ry="4" fill="#ff9db0"/>
+        <ellipse class="blush" cx="80" cy="66" rx="7" ry="4" fill="#ff9db0"/>
+        <g class="brow-angry"><path d="M40 44 L58 52" stroke="#4a2f18" stroke-width="3.5" stroke-linecap="round"/>
+           <path d="M80 44 L62 52" stroke="#4a2f18" stroke-width="3.5" stroke-linecap="round"/></g>
+        <path d="M40 48 Q48 44 56 48" stroke="#4a2f18" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M64 48 Q72 44 80 48" stroke="#4a2f18" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <ellipse cx="48" cy="60" rx="6" ry="9" fill="#3a5a8a"/><ellipse cx="72" cy="60" rx="6" ry="9" fill="#3a5a8a"/>
+        <circle cx="50" cy="56" r="2" fill="#fff"/><circle cx="74" cy="56" r="2" fill="#fff"/>
+        <path class="mouth-sad" d="M54 80 Q60 76 66 80" stroke="#a33" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path class="mouth-happy" d="M50 76 Q60 86 70 76" stroke="#a33" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path class="mouth-kissed" d="M56 78 Q60 82 64 78 Q60 84 56 78Z" fill="#d44" stroke="#a33" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <!-- БУКЕТ ЦВЕТОВ -->
+    <div id="flowers">
+      <svg viewBox="0 0 50 60">
+        <!-- стебли -->
+        <line x1="25" y1="60" x2="20" y2="35" stroke="#2d5a3d" stroke-width="2"/>
+        <line x1="25" y1="60" x2="25" y2="30" stroke="#2d5a3d" stroke-width="2"/>
+        <line x1="25" y1="60" x2="30" y2="35" stroke="#2d5a3d" stroke-width="2"/>
+        <!-- листья -->
+        <ellipse cx="18" cy="45" rx="4" ry="6" fill="#3a7a4d" transform="rotate(-30 18 45)"/>
+        <ellipse cx="32" cy="45" rx="4" ry="6" fill="#3a7a4d" transform="rotate(30 32 45)"/>
+        <!-- цветы -->
+        <circle cx="20" cy="30" r="6" fill="#ff6b9d"/>
+        <circle cx="25" cy="25" r="6" fill="#ffd93d"/>
+        <circle cx="30" cy="30" r="6" fill="#ff6b9d"/>
+        <circle cx="22" cy="22" r="5" fill="#c084fc"/>
+        <circle cx="28" cy="22" r="5" fill="#c084fc"/>
+        <!-- центры цветов -->
+        <circle cx="20" cy="30" r="2" fill="#fff"/>
+        <circle cx="25" cy="25" r="2" fill="#fff"/>
+        <circle cx="30" cy="30" r="2" fill="#fff"/>
+        <circle cx="22" cy="22" r="1.5" fill="#fff"/>
+        <circle cx="28" cy="22" r="1.5" fill="#fff"/>
+      </svg>
+    </div>
+
+    <!-- КЛЮЧ -->
+    <div id="key" class="idle" title="Ключ">
+      <svg viewBox="0 0 60 26">
+        <circle cx="12" cy="13" r="9" fill="none" stroke="#f4c63d" stroke-width="5"/>
+        <rect x="20" y="10" width="34" height="6" rx="3" fill="#f4c63d"/>
+        <rect x="44" y="14" width="5" height="8" fill="#f4c63d"/><rect x="51" y="14" width="5" height="6" fill="#f4c63d"/>
+      </svg>
+    </div>
+
+    <div id="msg">И я сейчас уйду</div>
+    <div id="win"><div><h2>🌈 ЛЮБОВЬ И РАДУГА 🌈</h2><p>Дверь открылась, и появилась радуга! 💖</p></div></div>
+  </div>
+
+<script>
+(function(){
+  const room=document.getElementById('room'), key=document.getElementById('key'),
+        door=document.getElementById('door'), char1=document.getElementById('char1'),
+        char2=document.getElementById('char2'), hint=document.getElementById('hint'),
+        msg=document.getElementById('msg'), win=document.getElementById('win'),
+        flowers=document.getElementById('flowers');
+
+  let keyState='in_hand';
+  let doorState='locked';
+  let char2State='hidden';
+  let char1State='sad';
+  let kissDone=false;
+
+  function placeKeyInHand(){
+    const c=char1.getBoundingClientRect(), r=room.getBoundingClientRect();
+    key.style.left=(c.left-r.left+c.width*0.72)+'px';
+    key.style.top =(c.top -r.top +c.height*0.62)+'px';
+  }
+  window.addEventListener('load',placeKeyInHand);
+  window.addEventListener('resize',()=>{ if(keyState==='in_hand') placeKeyInHand(); });
+  placeKeyInHand();
+
+  const setHint=t=>hint.textContent=t;
+  const showMsg=()=>{ msg.classList.add('show'); setTimeout(()=>msg.classList.remove('show'),1600); };
+
+  function openDoor(){
+    if(doorState!=='locked') return;
+    doorState='open';
+    room.classList.add('opened');
+    char2State='visible';
+    char2.classList.add('visible');
+    setHint('Дверь открылась! А там… кто-то ждал тебя 💫');
+  }
+
+  function sendKiss(){
+    const c1=char1.getBoundingClientRect(), r=room.getBoundingClientRect();
+    for(let i=0;i<6;i++){
+      const h=document.createElement('div'); h.className='heart'; h.textContent='💋';
+      h.style.left=(c1.left-r.left+c1.width*0.85)+'px'; h.style.top=(c1.top-r.top+c1.height*0.35)+'px';
+      h.style.setProperty('--dx',(Math.random()*100+20)+'px'); h.style.animationDelay=(i*0.15)+'s';
+      room.appendChild(h); setTimeout(()=>h.remove(),1800+i*150);
+    }
+  }
+
+  function doKiss(){
+    if(kissDone) return;
+    kissDone=true;
+    char1State='happy';
+    char1.className='happy';
+    const c2=char2.getBoundingClientRect(), c1=char1.getBoundingClientRect(), r=room.getBoundingClientRect();
+    const targetLeft = (c2.left-r.left) - c1.width - 10;
+    char1.style.left = targetLeft+'px';
+    char1.style.transform='scaleX(1)';
+    setHint('Он идёт к ней… 💕');
+    setTimeout(()=>{
+      sendKiss();
+      char2.className='visible kissed';
+      setHint('Поцелуй! 💋💋💋');
+    },1200);
+    setTimeout(()=>{
+      // Мальчик дарит цветы
+      const c2=char2.getBoundingClientRect(), r=room.getBoundingClientRect();
+      flowers.style.left=(c2.left-r.left+c2.width*0.3)+'px';
+      flowers.style.top=(c2.top-r.top+c2.height*0.4)+'px';
+      flowers.classList.add('visible');
+      setHint('Он дарит ей цветы! 🌸💐🌺');
+      setTimeout(()=>win.classList.add('show'),1200);
+    },2400);
+  }
+
+  key.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(keyState!=='in_hand') return;
+    keyState='flying';
+    key.classList.remove('idle');
+    const lk=document.getElementById('lock').getBoundingClientRect(), r=room.getBoundingClientRect();
+    key.style.transition='top .9s ease-in,left .9s ease-in,transform .9s ease-in';
+    key.style.left=(lk.left-r.left+lk.width/2-30)+'px';
+    key.style.top =(lk.top -r.top +lk.height/2-13)+'px';
+    key.style.transform='rotate(90deg) scale(.9)';
+    setHint('Ключ летит к замку… проворачивается…');
+    setTimeout(()=>{ key.style.transform='rotate(360deg) scale(.7)'; },900);
+    setTimeout(()=>{ key.classList.add('gone'); keyState='gone'; },1300);
+    setTimeout(openDoor,1500);
+  });
+
+  door.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(doorState==='open'){ setHint('Дверь уже открыта!'); return; }
+    if(keyState==='gone'){ openDoor(); return; }
+    door.classList.remove('shake'); void door.offsetWidth; door.classList.add('shake');
+    setHint('Заперто! Сначала возьми ключ у девочки.');
+  });
+
+  door.addEventListener('contextmenu',function(e){
+    e.preventDefault(); e.stopPropagation();
+    showMsg();
+    setHint('«И я сейчас уйду»… 🚪💨');
+  });
+
+  char1.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(doorState==='locked'){
+      char1State='angry';
+      char1.className='angry turn';
+      setHint('Она нахмурилась и отвернулась от тебя 😠');
+      setTimeout(()=>{ char1.className='sad turn'; char1State='sad'; },1600);
+    }else{
+      doKiss();
+    }
+  });
+
+  char2.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(char2State==='visible' && doorState==='open'){
+      setHint('Нажми на девочку слева, чтобы она подошла к нему 💕');
+    }
+  });
+})();
+</script>
+</body>
+</html>
